@@ -18,7 +18,7 @@ class TestReparametrization(unittest.TestCase):
         [
             ["bert-base-cased-finetuned-mrpc", BERTCollaborativeAdapter, 768, 1e-5],
             ["distilbert-base-cased", DistilBERTCollaborativeAdapter, 768, 1e-5],
-            ["albert-base-v2", ALBERTCollaborativeAdapter, 768, 1e-3],
+            ["albert-base-v2", ALBERTCollaborativeAdapter, 768, 5e-2],
             ["bert-base-cased-finetuned-mrpc", BERTCollaborativeAdapter, 2, 1e100],
             ["distilbert-base-cased", DistilBERTCollaborativeAdapter, 2, 1e100],
             ["albert-base-v2", ALBERTCollaborativeAdapter, 2, 1e100],
