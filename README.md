@@ -34,7 +34,7 @@ model = AutoModel.from_pretrained("bert-base-cased-finetuned-mrpc")
 # reparametrize the model with tensor decomposition to use collaborative heads
 # decrease dim_shared_query_key to 384 for example to compress the model
 collab_model = copy.deepcopy(model)
-swap_to_collaborative(model, BERTCollaborativeAdapter, dim_shared_query_key=768)
+swap_to_collaborative(collab_model, BERTCollaborativeAdapter, dim_shared_query_key=768)
 
 # check that output is not altered too much
 any_input = torch.LongTensor(3, 25).random_(1000, 10000)
