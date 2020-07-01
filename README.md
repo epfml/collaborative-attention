@@ -1,6 +1,6 @@
 # Collaborative Attention
 
-Code for the paper **Multi-Head Attention: Collaborate Instead of Concatenate**, Jean-Baptiste Cordonnier, Andreas Loukas, Martin Jaggi.
+Code for the paper [Multi-Head Attention: Collaborate Instead of Concatenate](https://arxiv.org/abs/2006.16362), Jean-Baptiste Cordonnier, Andreas Loukas, Martin Jaggi.
 
 We provide a python package to reparametrize any pretrained attention layer into a collaborative attention layer.
 This allows to decrease the key/query dimension without affecting the performance of the model.
@@ -124,4 +124,14 @@ You can reproduce our results using the [nmt/](nmt/) folder in this repository.
 ## Citation
 
 If you find this code useful, please cite the paper:
-*BibTEX will be added*.
+
+```
+@misc{cordonnier2020multihead,
+    title={Multi-Head Attention: Collaborate Instead of Concatenate},
+    author={Jean-Baptiste Cordonnier and Andreas Loukas and Martin Jaggi},
+    year={2020},
+    eprint={2006.16362},
+    archivePrefix={arXiv},
+    primaryClass={cs.LG}
+}
+```
