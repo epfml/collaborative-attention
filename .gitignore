@@ -1,0 +1,3 @@
+*.pyc
+wandb/
+src/collaborative_attention.egg-info
