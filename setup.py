@@ -12,8 +12,9 @@ setuptools.setup(
     python_requires=">=3.6",
     install_requires=[
         "tensorly>=0.4.5",
-        "transformers==2.5.0",
+        "transformers==2.11.0",
         "parameterized>=0.7.4",
         "tqdm>=4.46.0",
+        "wandb==0.9.2",
     ],
 )

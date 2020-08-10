@@ -1,4 +1,6 @@
-# Code from HuggingFace
+# Code from HuggingFace 2.11
+# https://raw.githubusercontent.com/huggingface/transformers/b42586ea560a20dcadb78472a6b4596f579e9043/examples/text-classification/run_glue.py
+
 
 import dataclasses
 import logging
@@ -10,7 +12,7 @@ from typing import Dict, Optional
 
 import numpy as np
 import torch
-# import wandb
+import wandb
 
 from transformers import (
     AutoConfig,
@@ -38,6 +40,7 @@ from collaborative_attention import (
 )
 import tqdm
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -48,28 +51,21 @@ class ModelArguments:
     """
 
     model_name_or_path: str = field(
-        metadata={
-            "help": "Path to pretrained model or model identifier from huggingface.co/models"
-        }
+        metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )
     config_name: Optional[str] = field(
         default=None,
-        metadata={
-            "help": "Pretrained config name or path if not the same as model_name"
-        },
+        metadata={"help": "Pretrained config name or path if not the same as model_name"},
     )
     tokenizer_name: Optional[str] = field(
         default=None,
-        metadata={
-            "help": "Pretrained tokenizer name or path if not the same as model_name"
-        },
+        metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"},
     )
     cache_dir: Optional[str] = field(
         default=None,
-        metadata={
-            "help": "Where do you want to store the pretrained models downloaded from s3"
-        },
+        metadata={"help": "Where do you want to store the pretrained models downloaded from s3"},
     )
+
     mix_heads: bool = False
     mix_size: Optional[int] = None  # Size of the tensor decomposition for mixed heads
     mix_decomposition_tol: float = 1e-6  # Tolerance for the tensor factorization algorithm
@@ -77,10 +73,8 @@ class ModelArguments:
     model_output_prefix: Optional[str] = None
 
     # context / content only attention
-    # made weird to allow grid search in wandb
     restricted_attention: bool = False
-    context_attention_only: int = -1  # 1 -> context attention
-    # 0 -> content attention
+    context_attention_only: int = -1  # 1 -> context attention 0 -> content attention
 
 
 def main():
@@ -88,9 +82,7 @@ def main():
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
-    parser = HfArgumentParser(
-        (ModelArguments, DataTrainingArguments, TrainingArguments)
-    )
+    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
 
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
@@ -101,10 +93,11 @@ def main():
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
-    # wandb.init(project="mixing-heads-finetuning")
-    # wandb.config.update(model_args)
-    # wandb.config.update(data_args)
-    # wandb.config.update(training_args)
+    # Comment the wandb lines if you don't have wandb login.
+    wandb.init(project="mixing-heads-finetuning")
+    wandb.config.update(model_args)
+    wandb.config.update(data_args)
+    wandb.config.update(training_args)
 
     # HERE MODIFY THE CONFIG PATHS ...
     def extract_last(path):
@@ -128,10 +121,7 @@ def main():
     )
 
     training_args.output_dir = os.path.join(
-        training_args.output_dir,
-        output_model_name,
-        data_args.task_name,
-        str(model_args.repeat_id),
+        training_args.output_dir, output_model_name, data_args.task_name, str(model_args.repeat_id),
     )
 
     data_args.data_dir = os.path.join(data_args.data_dir, data_args.task_name)
@@ -149,9 +139,7 @@ def main():
 
     if os.path.exists(model_args.model_name_or_path):
         model_args.model_name_or_path = os.path.join(
-            model_args.model_name_or_path,
-            data_args.task_name,
-            str(model_args.repeat_id),
+            model_args.model_name_or_path, data_args.task_name, str(model_args.repeat_id),
         )
 
     # DONE MODIFYING THE CONFIG
@@ -183,9 +171,7 @@ def main():
     logger.info("Training/evaluation parameters %s", training_args)
 
     # Set seed
-    set_seed(
-        model_args.repeat_id if model_args.repeat_id is not None else training_args.seed
-    )
+    set_seed(model_args.repeat_id if model_args.repeat_id is not None else training_args.seed)
 
     try:
         num_labels = glue_tasks_num_labels[data_args.task_name]
@@ -200,17 +186,13 @@ def main():
     # download model & vocab.
 
     config = AutoConfig.from_pretrained(
-        model_args.config_name
-        if model_args.config_name
-        else model_args.model_name_or_path,
+        model_args.config_name if model_args.config_name else model_args.model_name_or_path,
         num_labels=num_labels,
         finetuning_task=data_args.task_name,
         cache_dir=model_args.cache_dir,
     )
     tokenizer = AutoTokenizer.from_pretrained(
-        model_args.tokenizer_name
-        if model_args.tokenizer_name
-        else model_args.model_name_or_path,
+        model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
         cache_dir=model_args.cache_dir,
     )
     model = AutoModelForSequenceClassification.from_pretrained(
@@ -221,12 +203,13 @@ def main():
     )
 
     # Get datasets
-    train_dataset = (
-        GlueDataset(data_args, tokenizer=tokenizer) if training_args.do_train else None
-    )
+    train_dataset = GlueDataset(data_args, tokenizer=tokenizer) if training_args.do_train else None
     eval_dataset = (
-        GlueDataset(data_args, tokenizer=tokenizer, evaluate=True)
-        if training_args.do_eval
+        GlueDataset(data_args, tokenizer=tokenizer, mode="dev") if training_args.do_eval else None
+    )
+    test_dataset = (
+        GlueDataset(data_args, tokenizer=tokenizer, mode="test")
+        if training_args.do_predict
         else None
     )
 
@@ -293,7 +276,7 @@ def main():
         )
 
         elapsed = time.time() - start
-        # wandb.run.summary["decomposition_time"] = elapsed
+        wandb.run.summary["decomposition_time"] = elapsed
 
     # Initialize our Trainer
     trainer = Trainer(
@@ -318,7 +301,7 @@ def main():
             tokenizer.save_pretrained(training_args.output_dir)
 
     # Evaluation
-    results = {}
+    eval_results = {}
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
 
@@ -326,32 +309,50 @@ def main():
         eval_datasets = [eval_dataset]
         if data_args.task_name == "mnli":
             mnli_mm_data_args = dataclasses.replace(data_args, task_name="mnli-mm")
-            eval_datasets.append(
-                GlueDataset(mnli_mm_data_args, tokenizer=tokenizer, evaluate=True)
-            )
+            eval_datasets.append(GlueDataset(mnli_mm_data_args, tokenizer=tokenizer, mode="dev"))
 
         for eval_dataset in eval_datasets:
-            result = trainer.evaluate(eval_dataset=eval_dataset)
+            eval_result = trainer.evaluate(eval_dataset=eval_dataset)
 
             output_eval_file = os.path.join(
-                training_args.output_dir,
-                f"eval_results_{eval_dataset.args.task_name}.txt",
+                training_args.output_dir, f"eval_results_{eval_dataset.args.task_name}.txt"
             )
             if trainer.is_world_master():
                 with open(output_eval_file, "w") as writer:
-                    logger.info(
-                        "***** Eval results {} *****".format(
-                            eval_dataset.args.task_name
-                        )
-                    )
-                    for key, value in result.items():
+                    logger.info("***** Eval results {} *****".format(eval_dataset.args.task_name))
+                    for key, value in eval_result.items():
                         logger.info("  %s = %s", key, value)
                         writer.write("%s = %s\n" % (key, value))
-                        # wandb.run.summary[key] = value
 
-            results.update(result)
+            eval_results.update(eval_result)
 
-    return results
+    if training_args.do_predict:
+        logging.info("*** Test ***")
+        test_datasets = [test_dataset]
+        if data_args.task_name == "mnli":
+            mnli_mm_data_args = dataclasses.replace(data_args, task_name="mnli-mm")
+            test_datasets.append(GlueDataset(mnli_mm_data_args, tokenizer=tokenizer, mode="test"))
+
+        for test_dataset in test_datasets:
+            predictions = trainer.predict(test_dataset=test_dataset).predictions
+            if output_mode == "classification":
+                predictions = np.argmax(predictions, axis=1)
+
+            output_test_file = os.path.join(
+                training_args.output_dir, f"test_results_{test_dataset.args.task_name}.txt"
+            )
+            if trainer.is_world_master():
+                with open(output_test_file, "w") as writer:
+                    logger.info("***** Test results {} *****".format(test_dataset.args.task_name))
+                    writer.write("index\tprediction\n")
+                    for index, item in enumerate(predictions):
+                        if output_mode == "regression":
+                            writer.write("%d\t%3.3f\n" % (index, item))
+                        else:
+                            item = test_dataset.get_labels()[item]
+                            writer.write("%d\t%s\n" % (index, item))
+                            wandb.run.summary[key] = value
+    return eval_results
 
 
 def _mp_fn(index):
