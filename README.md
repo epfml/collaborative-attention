@@ -6,7 +6,7 @@ We provide a python package to reparametrize any pretrained attention layer into
 This allows to decrease the key/query dimension without affecting the performance of the model.
 Our factorization can be used either for pretraining as a drop-in replacement of concatenated heads attention or before fine tuning as a compression method.
 
-![tests](https://github.com/epfml/collaborative-attention/workflows/tests/badge.svg)
+[![tests](https://github.com/epfml/collaborative-attention/workflows/tests/badge.svg)](https://github.com/epfml/collaborative-attention/actions?query=workflow%3Atests)
 
 ## Install
 
