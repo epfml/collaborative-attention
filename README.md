@@ -2,6 +2,8 @@
 
 Code for the paper [Multi-Head Attention: Collaborate Instead of Concatenate](https://arxiv.org/abs/2006.16362), Jean-Baptiste Cordonnier, Andreas Loukas, Martin Jaggi.
 
+> Clone this repo with submodules `git clone --recurse-submodules https://github.com/epfml/collaborative-attention.git`
+
 We provide a python package to reparametrize any pretrained attention layer into a collaborative attention layer.
 This allows to decrease the key/query dimension without affecting the performance of the model.
 Our factorization can be used either for pretraining as a drop-in replacement of concatenated heads attention or before fine tuning as a compression method.
@@ -102,24 +104,81 @@ python run_glue.py \
     --mix_size 384
 ```
 
-| Model              | $\tilde D_k$        | CoLA | SST-2 | MRPC      | STS-B     | QQP       | MNLI      | QNLI | RTE  | **Avg.**
-| ------------------ | ------------------- | ---- | ----- | --------- | --------- | --------- | --------- | ---- | ---- | --------
-| BERT-base          |  -                  | 54.7 | 91.7  | 88.8/83.8 | 88.8/88.7 | 87.6/90.8 | 84.1      | 90.9 | 63.2 |  83.0
-|                    |  768                | 56.8 | 90.1  | 89.6/85.1 | 89.2/88.9 | 86.8/90.2 | 83.4      | 90.2 | 65.3 |  83.2
-|                    | 384                 | 56.3 | 90.7  | 87.7/82.4 | 88.3/88.0 | 86.3/90.0 | 83.0      | 90.1 | 65.3 |  82.5
-|                    | 256                 | 52.6 | 90.1  | 88.1/82.6 | 87.5/87.2 | 85.9/89.6 | 82.7      | 89.5 | 62.5 |  81.7
-|                    | 128                 | 43.5 | 89.5  | 83.4/75.2 | 84.5/84.3 | 81.1/85.8 | 79.4      | 86.7 | 60.7 |  77.6
-| DistilBERT         | -                   | 46.6 | 89.8  | 87.0/82.1 | 84.0/83.7 | 86.2/89.8 | 81.9      | 88.1 | 60.3 |  80.0
-|                    | 384                 | 45.6 | 89.2  | 86.6/80.9 | 81.7/81.9 | 86.1/89.6 | 81.1      | 87.0 | 60.7 |  79.1
-| ALBERT             | -                   | 58.3 | 90.7  | 90.8/87.5 | 91.2/90.8 | 87.5/90.7 | 85.2      | 91.7 | 73.7 |  85.3
-|                    | 512                 | 51.1 | 86.0  | 91.4/88.0 | 88.6/88.2 | 87.2/90.4 | 84.2      | 90.2 | 69.0 |  83.1
-|                    | 384                 | 40.7 | 89.6  | 82.3/71.1 | 86.0/85.6 | 87.2/90.5 | 84.4      | 90.0 | 49.5 |  77.9
-
-
 ### Neural Machine Translation
 
-The NMT experiments is based on [MLBench](https://mlbench.readthedocs.io/).
-You can reproduce our results using the [nmt/](nmt/) folder in this repository.
+```
+cd fairseq/
+pip install --editable ./
+# on MacOS:
+# CFLAGS="-stdlib=libc++" pip install --editable ./
+```
+
+Download and preprocess the data following these [instructions](https://github.com/pytorch/fairseq/tree/master/examples/scaling_nmt).
+
+Reproduce our experiments on a machine with 4 GPUs with the following command:
+
+```bash
+# set COLAB to "none" to run the original transformer
+# set KEY_DIM for different key dimensions
+KEY_DIM=512 COLAB="encoder_cross_decoder" CUDA_VISIBLE_DEVICES=0,1,2,3 python train.py data-bin/wmt16_en_de_bpe32k \
+    --arch transformer_wmt_en_de \
+    --save-dir checkpoints/wmt16-en-de/base-d-$KEY_DIM-colab-$COLAB \
+    --share-all-embeddings \
+    --optimizer adam \
+    --adam-betas '(0.9, 0.98)' \
+    --clip-norm 0.0 \
+    --lr 0.0007 \
+    --min-lr 1e-09 \
+    --lr-scheduler inverse_sqrt \
+    --warmup-updates 4000 \
+    --warmup-init-lr 1e-07 \
+    --dropout 0.1 \
+    --weight-decay 0.0 \
+    --criterion label_smoothed_cross_entropy \
+    --label-smoothing 0.1 \
+    --max-tokens 3584 \
+    --update-freq 2 \
+    --fp16 \
+    --collaborative-heads $COLAB \
+    --key-dim $KEY_DIM \
+```
+
+### Vision Transformers
+
+Follow deit setup
+
+```
+cd deit
+conda install -c pytorch pytorch torchvision
+pip install timm==0.3.2 tensorly
+```
+
+To train Base3 models, run the following command:
+
+```
+python -m torch.distributed.launch --nproc_per_node=4 --use_env main.py --model deit_base3_patch16_224_collab384 --batch-size 256 --data-path /imagenet --output_dir ../outputs
+```
+
+or for the concatenate attention:
+
+```
+python -m torch.distributed.launch --nproc_per_node=4 --use_env main.py --model deit_base3_patch16_224_key384 --batch-size 256 --data-path /imagenet --output_dir ../outputs
+```
+
+You can reparametrize a pretrained model by running the following command on a single GPU machine:
+
+```
+python --model deit_base_patch16_224 --shared_key_query_dim 384 --output_dir ./models
+```
+
+which will create a new checkpoint for this reparametrized model in `./models/deit_base_patch16_224_collab384.pt`.
+
+To evaluate this model, run:
+
+```
+python main.py --eval --model deit_base_patch16_224_collab384 --data-path /imagenet --pretrained  --models_directory ./models
+```
+
 
 ## Citation
 
