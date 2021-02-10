@@ -1,0 +1,6 @@
+[submodule "deit"]
+	path = deit
+	url = https://github.com/jbcdnr/deit-collaborative-attention.git
+[submodule "fairseq"]
+	path = fairseq
+	url = https://github.com/jbcdnr/fairseq-collaborative-heads
